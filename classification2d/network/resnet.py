@@ -1,9 +1,11 @@
 from torchvision.models.resnet import resnet18, resnet34, resnet50, resnet101, resnet152
 
 
-def get_classification_model(classifier_name, num_classes, pretrained):
+def get_classification_model(classifier_name='resnet18', num_classes=1000, pretrained=True):
     """
     Get the detection model
+    :param pretrained:
+    :param classifier_name:
     :param num_classes:
     :return:
     """

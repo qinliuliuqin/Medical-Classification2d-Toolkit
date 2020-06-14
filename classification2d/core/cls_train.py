@@ -39,7 +39,7 @@ def train(train_config_file):
     # copy training and inference config files to the model folder
     shutil.copy(train_config_file, os.path.join(model_folder, 'train_config.py'))
     infer_config_file = os.path.join(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'infer_config.py'))
-    shutil.copy(infer_config_file, os.path.join(train_cfg.general.save_dir, 'infer_config.py'))
+    shutil.copy(infer_config_file, os.path.join(train_cfg.general.model_save_dir, 'infer_config.py'))
 
     # enable logging
     log_file = os.path.join(model_folder, 'train_log.txt')
@@ -60,7 +60,8 @@ def train(train_config_file):
     )
     train_data_loader = DataLoader(
         train_dataset,
-        sampler=EpochConcateSampler(train_dataset, train_cfg.train.epochs),
+        # sampler=EpochConcateSampler(train_dataset, train_cfg.train.epochs),
+        shuffle=False,
         batch_size=train_cfg.train.batchsize,
         num_workers=train_cfg.train.num_threads,
         pin_memory=True
@@ -82,7 +83,10 @@ def train(train_config_file):
     )
 
     model_module = importlib.import_module('classification2d.network.' + train_cfg.net.name)
-    model = model_module.get_detection_model(train_cfg.dataset.num_classes, train_cfg.net.pre_trained)
+    model = model_module.get_classification_model(
+        classifier_name='resnet18',
+        num_classes=train_cfg.dataset.num_classes,
+        pretrained=train_cfg.net.pre_trained)
     kaiming_weight_init(model)
 
     if train_cfg.general.num_gpus > 0:
@@ -113,17 +117,19 @@ def train(train_config_file):
     for i in range(len(train_data_loader)):
         begin_t = time.time()
 
-        crops, masks, frames, filenames = data_iter.next()
+        crops, labels = data_iter.next()
 
         if train_cfg.general.num_gpus > 0:
-            crops, masks = crops.cuda(), masks.cuda()
+            crops, labels = crops.cuda(), labels.cuda()
 
         # clear previous gradients
         opt.zero_grad()
 
         # network forward and backward
-        outputs = net(crops)
-        train_loss = loss_func(outputs, masks)
+        outputs = model(crops)
+        outputs = nn.Softmax(1)(outputs)
+
+        train_loss = loss_func(outputs, labels)
         train_loss.backward()
 
         # update weights

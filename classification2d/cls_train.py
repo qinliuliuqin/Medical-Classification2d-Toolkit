@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser(description=long_description)
 
     parser.add_argument('-i', '--input',
-                        default='/home/qinliu19/projects/Medical-Classification2d-Toolkit/classification2d/config/train_config.py',
+                        default='/home/ql/projects/Medical-Classification2d-Toolkit/classification2d/config/train_config.py',
                         help='configure file for 2d medical image classification training.')
     args = parser.parse_args()
     train(args.input)

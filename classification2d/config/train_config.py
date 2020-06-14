@@ -13,23 +13,23 @@ cfg = __C
 __C.general = {}
 
 # image-segmentation pair list for training
-__C.general.train_label_file = '/shenlab/lab_stor6/projects/PIC_TNSCUI2020/datasets/train.csv'
+__C.general.train_label_file = '/mnt/projects/CXR_Object/train_label.csv'
 
-__C.general.train_data_folder = '/shenlab/lab_stor6/projects/PIC_TNSCUI2020/datasets/train.csv'
+__C.general.train_data_folder = '/mnt/projects/CXR_Object/train'
 
 # image-segmentation pair list for validation
-__C.general.val_label_file = '/shenlab/lab_stor6/projects/PIC_TNSCUI2020/datasets/test.csv'
+__C.general.val_label_file = '/mnt/projects/CXR_Object/dev_label.csv'
 
-__C.general.val_data_folder = '/shenlab/lab_stor6/projects/PIC_TNSCUI2020/datasets/train.csv'
+__C.general.val_data_folder = '/mnt/projects/CXR_Object/dev'
 
 # the output of training models and logs
-__C.general.model_save_dir = '/shenlab/lab_stor6/qinliu/PIC_TNSCUI2020/models/model_0601_2020'
+__C.general.model_save_dir = '/mnt/projects/CXR_Object/models/model_0614_2020'
 
 # continue training from certain epoch, -1 to train from scratch
 __C.general.resume_epoch = -1
 
 # the number of GPUs used in training. Set to 0 if using cpu only.
-__C.general.num_gpus = 1
+__C.general.num_gpus = 0
 
 # random seed used in training (debugging purpose)
 __C.general.seed = 0
@@ -84,7 +84,9 @@ __C.loss.focal_gamma = 2
 __C.net = {}
 
 # the network name
-__C.net.name = 'vdnet2d'
+__C.net.name = 'resnet'
+
+__C.net.pre_trained = False
 
 ##################################
 # training parameters
@@ -96,10 +98,10 @@ __C.train = {}
 __C.train.epochs = 1001
 
 # the number of samples in a batch
-__C.train.batchsize = 6
+__C.train.batchsize = 4
 
 # the number of threads for IO
-__C.train.num_threads = 6
+__C.train.num_threads = 4
 
 # the learning rate
 __C.train.lr = 1e-4
