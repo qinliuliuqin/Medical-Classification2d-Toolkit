@@ -163,8 +163,8 @@ def train(train_config_file):
         sample_duration = batch_duration * 1.0 / train_cfg.train.batchsize
 
         # print training loss per batch
-        msg = 'epoch: {}, batch: {}, train_loss: {:.4f}, time: {:.4f} s/vol'
-        msg = msg.format(epoch_idx, batch_idx, train_loss.item(), sample_duration)
+        msg = 'epoch: {}, batch: {}, lr: {:.6f}, train_loss: {:.4f}, time: {:.4f} s/vol'
+        msg = msg.format(epoch_idx, batch_idx, optimizer.param_groups[0]["lr"], train_loss.item(), sample_duration)
         logger.info(msg)
 
         # validation, only used for binary classification
