@@ -95,7 +95,7 @@ def train(train_config_file):
     kaiming_weight_init(model)
 
     if train_cfg.general.num_gpus > 0:
-        model = model.parallel.DataParallel(model, device_ids=list(range(train_cfg.general.num_gpus)))
+        model = nn.parallel.DataParallel(model, device_ids=list(range(train_cfg.general.num_gpus)))
         model = model.cuda()
 
     # training optimizer
