@@ -154,12 +154,12 @@ def train(train_config_file):
                 if train_cfg.general.num_gpus > 0:
                     image, label = image.cuda(), label.cuda()
 
-                val_labels.append(label)
+                val_labels.append(label.cpu())
                 val_pred_prob = nn.Softmax(1)(model(image))
-                val_pred_probs.append(val_pred_prob[0][1].data)
+                val_pred_probs.append(val_pred_prob[0][1].detach().cpu())
 
                 _, val_pred_label = val_pred_prob.max(1)
-                val_pred_labels.append(val_pred_label)
+                val_pred_labels.append(val_pred_label.cpu())
 
             number = 0
 
@@ -167,7 +167,6 @@ def train(train_config_file):
                 if val_pred_labels[i] == val_labels[i]:
                     number += 1
             acc = number / len(val_labels)
-
             auc = roc_auc_score(val_labels, val_pred_probs)
             print('Epoch: ', epoch_idx, '| val acc: %.4f' % acc, '| val auc: %.4f' % auc)
 
