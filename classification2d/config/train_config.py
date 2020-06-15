@@ -111,6 +111,8 @@ __C.train.lr = 0.005
 # the number of batches to save model
 __C.train.save_epochs = 1
 
+__C.train.print_freq = 20
+
 ##################################
 # optimizer parameters
 ##################################

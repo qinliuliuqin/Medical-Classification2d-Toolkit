@@ -164,15 +164,16 @@ def train(train_config_file):
             lr_scheduler.step()
 
         # print training loss per batch
-        msg = 'epoch: {}, batch: {}, lr: {:.6f}, train_loss: {:.4f}, time: {:.4f} s/vol'
-        msg = msg.format(
-            epoch_idx + last_save_epoch,
-            batch_idx + last_save_batch,
-            optimizer.param_groups[0]["lr"],
-            train_loss.item(),
-            sample_duration
-        )
-        logger.info(msg)
+        if batch_idx % train_cfg.train.print_freq == 0:
+            msg = 'epoch: {}, batch: {}, lr: {:.6f}, train_loss: {:.4f}, time: {:.4f} s/vol'
+            msg = msg.format(
+                epoch_idx + last_save_epoch,
+                batch_idx + last_save_batch,
+                optimizer.param_groups[0]["lr"],
+                train_loss.item(),
+                sample_duration
+            )
+            logger.info(msg)
 
         # validation, only used for binary classification
         if epoch_idx != 0 and (epoch_idx % train_cfg.train.save_epochs == 0) and epoch_updated:
