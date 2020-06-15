@@ -128,15 +128,14 @@ def train(train_config_file):
 
     # load checkpoint if resume epoch > 0
     if train_cfg.general.resume_epoch >= 0:
-        last_save_epoch, batch_start = load_checkpoint(train_cfg.general.resume_epoch, model, optimizer, model_folder)
+        last_save_epoch, last_save_batch = load_checkpoint(train_cfg.general.resume_epoch, model, optimizer, model_folder)
     else:
-        last_save_epoch, batch_start = 0, 0
+        last_save_epoch, last_save_batch = 0, 0
 
     writer = SummaryWriter(os.path.join(model_folder, 'tensorboard'))
 
     # loop over batches
-    batch_idx = batch_start
-    max_auc = 0
+    batch_idx, epoch_idx, last_epoch, max_auc = 0, 0, 0, 0
     for images, labels in train_data_loader:
         begin_t = time.time()
 
@@ -155,20 +154,28 @@ def train(train_config_file):
         optimizer.step()
 
         epoch_idx = batch_idx * train_cfg.train.batchsize // len(train_dataset)
-        if epoch_idx > last_save_epoch:
-            lr_scheduler.step()
-
         batch_idx += 1
         batch_duration = time.time() - begin_t
         sample_duration = batch_duration * 1.0 / train_cfg.train.batchsize
 
+        epoch_updated = epoch_idx > last_epoch
+        if epoch_updated:
+            last_epoch = epoch_idx
+            lr_scheduler.step()
+
         # print training loss per batch
         msg = 'epoch: {}, batch: {}, lr: {:.6f}, train_loss: {:.4f}, time: {:.4f} s/vol'
-        msg = msg.format(epoch_idx, batch_idx, optimizer.param_groups[0]["lr"], train_loss.item(), sample_duration)
+        msg = msg.format(
+            epoch_idx + last_save_epoch,
+            batch_idx + last_save_batch,
+            optimizer.param_groups[0]["lr"],
+            train_loss.item(),
+            sample_duration
+        )
         logger.info(msg)
 
         # validation, only used for binary classification
-        if epoch_idx != 0 and (epoch_idx % train_cfg.train.save_epochs == 0) and epoch_idx > last_save_epoch:
+        if epoch_idx != 0 and (epoch_idx % train_cfg.train.save_epochs == 0) and epoch_updated:
             model.eval()
 
             with torch.no_grad():
@@ -192,17 +199,15 @@ def train(train_config_file):
             acc = number / len(val_labels)
             auc = roc_auc_score(val_labels, val_pred_probs)
 
-            msg = 'epoch: {} | val acc: {:.4f} | val auc: {:.4f}'.format(epoch_idx, acc, auc)
+            msg = 'epoch: {} | val acc: {:.4f} | val auc: {:.4f}'.format(epoch_idx + last_save_epoch, acc, auc)
             logger.info(msg)
 
             if auc > max_auc:
                 max_auc = auc
-                msg = 'best epoch: {} | val acc: {:.4f} | best val auc: {:.4f}'.format(epoch_idx, acc, auc)
+                msg = 'best epoch: {} | val acc: {:.4f} | best val auc: {:.4f}'.format(epoch_idx + last_epoch, acc, auc)
                 logger.info(msg)
-                torch.save(model.state_dict(), os.path.join(train_cfg.general.model_save_dir, 'model.pt'))
-                save_checkpoint(model, optimizer, epoch_idx, batch_idx, train_cfg)
+                save_checkpoint(model, optimizer, epoch_idx + last_save_epoch, batch_idx + last_save_batch, train_cfg)
 
-            last_save_epoch = epoch_idx
             model.train()
 
         writer.add_scalar('Train/Loss', train_loss.item(), batch_idx)
