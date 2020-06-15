@@ -170,11 +170,14 @@ def train(train_config_file):
 
             acc = number / len(val_labels)
             auc = roc_auc_score(val_labels, val_pred_probs)
-            print('Epoch: ', epoch_idx, '| val acc: %.4f' % acc, '| val auc: %.4f' % auc)
+
+            msg = 'epoch: {} | val acc: {:.4f} | val auc: {:.4f}'.format(epoch_idx, acc, auc)
+            logger.info(msg)
 
             if auc > max_auc:
                 max_auc = auc
-                print('Best Epoch: ', epoch_idx, '| val acc: %.4f' % acc, '| Best val auc: %.4f' % max_auc)
+                msg = 'best epoch: {} | val acc: {:.4f} | best val auc: {:.4f}'.format(epoch_idx, acc, auc)
+                logger.info(msg)
                 torch.save(model.state_dict(), os.path.join(train_cfg.general.model_save_dir, 'model.pt'))
                 save_checkpoint(model, opt, epoch_idx, batch_idx, train_cfg)
 
