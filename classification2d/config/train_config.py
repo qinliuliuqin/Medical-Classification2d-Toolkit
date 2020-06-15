@@ -106,14 +106,28 @@ __C.train.batchsize = 4
 __C.train.num_threads = 4
 
 # the learning rate
-__C.train.lr = 1e-4
-
-# the beta in Adam optimizer
-__C.train.betas = (0.9, 0.999)
+__C.train.lr = 0.005
 
 # the number of batches to save model
 __C.train.save_epochs = 1
 
+##################################
+# optimizer parameters
+##################################
+
+__C.train.optimizer = {}
+
+__C.train.optimizer.name = 'SGD' # 'SGD' or 'Adam'
+
+__C.train.optimizer.sgd_momentum = 0.9
+
+__C.train.optimizer.adam_betas = (0.9, 0.999)
+
+__C.train.optimizer.weight_decay = 0.0005
+
+__C.train.optimizer.step_size = 5
+
+__C.train.optimizer.gamma = 0.1
 
 ###################################
 # debug parameters
@@ -122,4 +136,4 @@ __C.train.save_epochs = 1
 __C.debug = {}
 
 # whether to save input crops
-__C.debug.save_inputs = True
+__C.debug.save_inputs = False

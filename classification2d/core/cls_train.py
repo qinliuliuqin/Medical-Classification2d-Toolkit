@@ -99,18 +99,36 @@ def train(train_config_file):
         model = model.cuda()
 
     # training optimizer
-    opt = optim.Adam(model.parameters(), lr=train_cfg.train.lr, betas=train_cfg.train.betas)
+    optim = train_cfg.train.optimizer
+    if optim.name == 'SGD':
+        optimizer = torch.optim.SGD(
+            model.parameters(), lr=train_cfg.train.lr, momentum=optim.sgd_momentum, weight_decay=optim.weight_decay
+        )
+
+    elif optim.name == 'Adam':
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=train_cfg.train.lr, betas=optim.adam_betas
+        )
+
+    else:
+        raise ValueError('Unsupported optimizer type!')
+
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=optim.step_size, gamma=optim.gamma)
 
     if train_cfg.loss.name == 'Focal':
         # reuse focal loss if exists
-        loss_func = FocalLoss(class_num=train_cfg.dataset.num_classes, alpha=train_cfg.loss.obj_weight, gamma=train_cfg.loss.focal_gamma,
-                              use_gpu=train_cfg.general.num_gpus > 0)
+        loss_func = FocalLoss(
+            class_num=train_cfg.dataset.num_classes,
+            alpha=train_cfg.loss.obj_weight,
+            gamma=train_cfg.loss.focal_gamma,
+            use_gpu=train_cfg.general.num_gpus > 0
+        )
     else:
         raise ValueError('Unknown loss function')
 
     # load checkpoint if resume epoch > 0
     if train_cfg.general.resume_epoch >= 0:
-        last_save_epoch, batch_start = load_checkpoint(train_cfg.general.resume_epoch, model, opt, model_folder)
+        last_save_epoch, batch_start = load_checkpoint(train_cfg.general.resume_epoch, model, optimizer, model_folder)
     else:
         last_save_epoch, batch_start = 0, 0
 
@@ -126,7 +144,7 @@ def train(train_config_file):
             images, labels = images.cuda(), labels.cuda()
 
         # clear previous gradients
-        opt.zero_grad()
+        optimizer.zero_grad()
 
         # network forward and backward
         outputs = nn.Softmax(1)(model(images))
@@ -134,9 +152,12 @@ def train(train_config_file):
         train_loss.backward()
 
         # update weights
-        opt.step()
+        optimizer.step()
 
         epoch_idx = batch_idx * train_cfg.train.batchsize // len(train_dataset)
+        if epoch_idx > last_save_epoch:
+            lr_scheduler.step()
+
         batch_idx += 1
         batch_duration = time.time() - begin_t
         sample_duration = batch_duration * 1.0 / train_cfg.train.batchsize
@@ -179,7 +200,7 @@ def train(train_config_file):
                 msg = 'best epoch: {} | val acc: {:.4f} | best val auc: {:.4f}'.format(epoch_idx, acc, auc)
                 logger.info(msg)
                 torch.save(model.state_dict(), os.path.join(train_cfg.general.model_save_dir, 'model.pt'))
-                save_checkpoint(model, opt, epoch_idx, batch_idx, train_cfg)
+                save_checkpoint(model, optimizer, epoch_idx, batch_idx, train_cfg)
 
             last_save_epoch = epoch_idx
             model.train()
