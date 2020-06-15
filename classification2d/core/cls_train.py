@@ -156,7 +156,7 @@ def train(train_config_file):
 
                 val_labels.append(label)
                 val_pred_prob = nn.Softmax(1)(model(image))
-                val_pred_probs.append(val_pred_prob[0][1].cpu().detach())
+                val_pred_probs.append(val_pred_prob[0][1].data)
 
                 _, val_pred_label = val_pred_prob.max(1)
                 val_pred_labels.append(val_pred_label)
