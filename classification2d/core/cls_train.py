@@ -149,23 +149,25 @@ def train(train_config_file):
         # validation, only used for binary classification
         if epoch_idx != 0 and (epoch_idx % train_cfg.train.save_epochs == 0) and epoch_idx > last_save_epoch:
             model.eval()
-            val_pred_probs, val_pred_labels, val_labels = [], [], []
-            for image, label in val_data_loader:
-                if train_cfg.general.num_gpus > 0:
-                    image, label = image.cuda(), label.cuda()
 
-                val_labels.append(label.cpu())
-                val_pred_prob = nn.Softmax(1)(model(image))
-                val_pred_probs.append(val_pred_prob[0][1].detach().cpu())
+            with torch.no_grad():
+                val_pred_probs, val_pred_labels, val_labels = [], [], []
+                for image, label in val_data_loader:
+                    if train_cfg.general.num_gpus > 0:
+                        image, label = image.cuda(), label.cuda()
 
-                _, val_pred_label = val_pred_prob.max(1)
-                val_pred_labels.append(val_pred_label.cpu())
+                    val_labels.append(label.cpu())
+                    val_pred_prob = nn.Softmax(1)(model(image))
+                    val_pred_probs.append(val_pred_prob[0][1].detach().cpu())
+
+                    _, val_pred_label = val_pred_prob.max(1)
+                    val_pred_labels.append(val_pred_label.cpu())
 
             number = 0
-
             for i in range(len(val_pred_labels)):
                 if val_pred_labels[i] == val_labels[i]:
                     number += 1
+
             acc = number / len(val_labels)
             auc = roc_auc_score(val_labels, val_pred_probs)
             print('Epoch: ', epoch_idx, '| val acc: %.4f' % acc, '| val auc: %.4f' % auc)
