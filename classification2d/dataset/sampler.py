@@ -10,15 +10,16 @@ class EpochConcateSampler(Sampler):
         epoch(int): epoch num
     """
 
-    def __init__(self, data_source, epoch):
+    def __init__(self, data_source, epoch, seed=0):
         self.data_length = len(data_source)
         self.epoch = epoch
+        self.seed = seed
 
     def __iter__(self):
         index_all = []
         for i in range(self.epoch):
             index = list(range(self.data_length))
-            random.shuffle(index)
+            random.Random(self.seed).shuffle(index)
             index_all += index
         return iter(index_all)
 

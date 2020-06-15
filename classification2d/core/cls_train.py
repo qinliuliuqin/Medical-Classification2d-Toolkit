@@ -2,6 +2,7 @@ import importlib
 import numpy as np
 import os
 import shutil
+from sklearn.metrics import roc_auc_score
 import time
 import torch
 import torch.nn as nn
@@ -9,8 +10,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
-from classification2d.dataset.dataset import ClassificationDataset
 from classification2d.dataset.sampler import EpochConcateSampler
+from classification2d.dataset.dataset import ClassificationDataset
 from classification2d.loss.focal_loss import FocalLoss
 from classification2d.utils.file_io import load_config, setup_logger
 from classification2d.utils.model_io import load_checkpoint, save_checkpoint
@@ -60,8 +61,7 @@ def train(train_config_file):
     )
     train_data_loader = DataLoader(
         train_dataset,
-        # sampler=EpochConcateSampler(train_dataset, train_cfg.train.epochs),
-        shuffle=False,
+        sampler=EpochConcateSampler(train_dataset, train_cfg.train.epochs, train_cfg.general.seed),
         batch_size=train_cfg.train.batchsize,
         num_workers=train_cfg.train.num_threads,
         pin_memory=True
@@ -82,16 +82,21 @@ def train(train_config_file):
         pin_memory=True
     )
 
-    model_module = importlib.import_module('classification2d.network.' + train_cfg.net.name)
-    model = model_module.get_classification_model(
-        classifier_name='resnet18',
-        num_classes=train_cfg.dataset.num_classes,
-        pretrained=train_cfg.net.pre_trained)
+    if train_cfg.net.name.find('resnet') == 0:
+        model_module = importlib.import_module('classification2d.network.resnet')
+        model = model_module.get_classification_model(
+            classifier_name=train_cfg.net.name,
+            num_classes=train_cfg.dataset.num_classes,
+            pretrained=train_cfg.net.pre_trained)
+
+    else:
+        raise ValueError('Unsupported module type.')
+
     kaiming_weight_init(model)
 
     if train_cfg.general.num_gpus > 0:
-        net = nn.parallel.DataParallel(model, device_ids=list(range(train_cfg.general.num_gpus)))
-        net = net.cuda()
+        model = model.parallel.DataParallel(model, device_ids=list(range(train_cfg.general.num_gpus)))
+        model = model.cuda()
 
     # training optimizer
     opt = optim.Adam(model.parameters(), lr=train_cfg.train.lr, betas=train_cfg.train.betas)
@@ -111,24 +116,20 @@ def train(train_config_file):
 
     writer = SummaryWriter(os.path.join(model_folder, 'tensorboard'))
 
-    batch_idx = batch_start
-    data_iter = iter(train_data_loader)
     # loop over batches
-    for i in range(len(train_data_loader)):
+    batch_idx = batch_start
+    max_auc = 0
+    for images, labels in train_data_loader:
         begin_t = time.time()
 
-        crops, labels = data_iter.next()
-
         if train_cfg.general.num_gpus > 0:
-            crops, labels = crops.cuda(), labels.cuda()
+            images, labels = images.cuda(), labels.cuda()
 
         # clear previous gradients
         opt.zero_grad()
 
         # network forward and backward
-        outputs = model(crops)
-        outputs = nn.Softmax(1)(outputs)
-
+        outputs = nn.Softmax(1)(model(images))
         train_loss = loss_func(outputs, labels)
         train_loss.backward()
 
@@ -144,6 +145,41 @@ def train(train_config_file):
         msg = 'epoch: {}, batch: {}, train_loss: {:.4f}, time: {:.4f} s/vol'
         msg = msg.format(epoch_idx, batch_idx, train_loss.item(), sample_duration)
         logger.info(msg)
+
+        # validation, only used for binary classification
+        if epoch_idx != 0 and (epoch_idx % train_cfg.train.save_epochs == 0) and epoch_idx > last_save_epoch:
+            model.eval()
+            val_pred_probs, val_pred_labels, val_labels = [], [], []
+            for image, label in val_data_loader:
+                if train_cfg.general.num_gpus > 0:
+                    image, label = image.cuda(), label.cuda()
+
+                val_labels.append(label)
+                val_pred_prob = nn.Softmax(1)(model(image))
+                val_pred_probs.append(val_pred_prob[0][1].detach())
+
+
+                _, val_pred_label = val_pred_prob.max(1)
+                val_pred_labels.append(val_pred_label)
+
+            number = 0
+
+            for i in range(len(val_pred_labels)):
+                if val_pred_labels[i] == val_labels[i]:
+                    number += 1
+            acc = number / len(val_labels)
+
+            auc = roc_auc_score(val_labels, val_pred_probs)
+            print('Epoch: ', epoch_idx, '| val acc: %.4f' % acc, '| val auc: %.4f' % auc)
+
+            if auc > max_auc:
+                max_auc = auc
+                print('Best Epoch: ', epoch_idx, '| val acc: %.4f' % acc, '| Best val auc: %.4f' % max_auc)
+                torch.save(model.state_dict(), os.path.join(train_cfg.general.model_save_dir, 'model.pt'))
+                save_checkpoint(model, opt, epoch_idx, batch_idx, train_cfg)
+
+            last_save_epoch = epoch_idx
+            model.train()
 
         writer.add_scalar('Train/Loss', train_loss.item(), batch_idx)
 

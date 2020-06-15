@@ -54,7 +54,7 @@ def load_checkpoint(epoch_idx, net, opt, save_dir):
     return state['epoch'], state['batch']
 
 
-def save_checkpoint(net, opt, epoch_idx, batch_idx, cfg, max_stride, num_modality):
+def save_checkpoint(net, opt, epoch_idx, batch_idx, cfg):
     """ save model and parameters into a checkpoint file (.pth)
 
     :param net: the network object
@@ -62,12 +62,9 @@ def save_checkpoint(net, opt, epoch_idx, batch_idx, cfg, max_stride, num_modalit
     :param epoch_idx: the epoch index
     :param batch_idx: the batch index
     :param cfg: the configuration object
-    :param config_file: the configuration file path
-    :param max_stride: the maximum stride of network
-    :param num_modality: the number of image modalities
     :return: None
     """
-    model_folder = os.path.join(cfg.general.save_dir, cfg.general.model_scale)
+    model_folder = os.path.join(cfg.general.model_save_dir)
     chk_folder = os.path.join(model_folder, 'checkpoints', 'chk_{}'.format(epoch_idx))
     if not os.path.isdir(chk_folder):
         os.makedirs(chk_folder)
@@ -75,13 +72,9 @@ def save_checkpoint(net, opt, epoch_idx, batch_idx, cfg, max_stride, num_modalit
     state = {'epoch':             epoch_idx,
              'batch':             batch_idx,
              'net':               cfg.net.name,
-             'max_stride':        max_stride,
              'state_dict':        net.state_dict(),
-             'spacing':           cfg.dataset.spacing,
-             'interpolation':     cfg.dataset.interpolation,
-             'in_channels':       num_modality,
-             'out_channels':      cfg.dataset.num_classes,
-             'crop_normalizers':  [normalizer.to_dict() for normalizer in cfg.dataset.crop_normalizers]}
+             'out_channels':      cfg.dataset.num_classes
+             }
 
     # save python check point
     parm_filename = os.path.join(chk_folder, 'params.pth')

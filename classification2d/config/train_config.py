@@ -13,12 +13,12 @@ cfg = __C
 __C.general = {}
 
 # image-segmentation pair list for training
-__C.general.train_label_file = '/mnt/projects/CXR_Object/train_label.csv'
+__C.general.train_label_file = '/mnt/projects/CXR_Object/train_label_debug.csv'
 
 __C.general.train_data_folder = '/mnt/projects/CXR_Object/train'
 
 # image-segmentation pair list for validation
-__C.general.val_label_file = '/mnt/projects/CXR_Object/dev_label.csv'
+__C.general.val_label_file = '/mnt/projects/CXR_Object/dev_label_debug.csv'
 
 __C.general.val_data_folder = '/mnt/projects/CXR_Object/dev'
 
@@ -84,7 +84,7 @@ __C.loss.focal_gamma = 2
 __C.net = {}
 
 # the network name
-__C.net.name = 'resnet'
+__C.net.name = 'resnet34'
 
 __C.net.pre_trained = False
 
@@ -110,7 +110,7 @@ __C.train.lr = 1e-4
 __C.train.betas = (0.9, 0.999)
 
 # the number of batches to save model
-__C.train.save_epochs = 100
+__C.train.save_epochs = 1
 
 
 ###################################
