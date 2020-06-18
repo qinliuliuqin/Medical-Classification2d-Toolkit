@@ -8,9 +8,9 @@ def parse_and_check_arguments():
     """
     Parse input arguments and raise error if invalid.
     """
-    default_image_folder = '/mnt/projects/CXR_Object/data/train'
-    default_label_file = '/mnt/projects/CXR_Object/dataset/train_label.csv'
-    default_prediction_file = ''
+    default_image_folder = '/mnt/projects/CXR_Object/data/dev'
+    default_label_file = '/mnt/projects/CXR_Object/dataset/dev_label.csv'
+    default_prediction_file = '/mnt/projects/CXR_Object/results/model_0617_2020/dev_prediction.csv'
     # default_resolution = [1.5, 1.5, 1.5]
     # default_contrast_range = None
     default_output_folder = '/mnt/projects/CXR_Object/results/vis/classification'
@@ -50,11 +50,17 @@ def main():
     labels_df = pd.read_csv(args.label_file, na_filter=False)
     print(f'{len(labels_df)} pictures in the label files')
 
+    preds_df = pd.read_csv(args.prediction_file, na_filter=False)
+    print(f'{len(preds_df)} pictures in the prediction files')
+
     image_names, image_labels = labels_df['image_name'], labels_df['label']
     image_label_dict = dict(zip(image_names, image_labels))
 
+    image_names, image_predictions = preds_df['image_name'], preds_df['prediction']
+    image_prediction_dict = dict(zip(image_names, image_predictions))
+
     usage_flag = 1
-    gen_html_report([image_label_dict], usage_flag, args.output_folder)
+    gen_html_report([image_label_dict, image_prediction_dict], usage_flag, args.output_folder)
 
 
 if __name__ == '__main__':
